@@ -15,8 +15,6 @@ app.post('/webhook', async (req, res) => {
 
   const twiml = new MessagingResponse();
   twiml.message(responseMessage);
-
-  res.set('Content-Type', 'text/xml');
   res.send(twiml.toString());
 });
 
