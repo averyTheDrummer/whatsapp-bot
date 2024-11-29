@@ -127,19 +127,27 @@ Digite "sair" para encerrar o atendimento.`;
 };
 
 
-const getFAQ = () => {
-  return new Promise((resolve, reject) => {
-    connection.query('SELECT * FROM faq', (err, results) => {
-      if (err) {
-        reject('Erro ao buscar FAQs.');
-      } else {
-        const faqs = results.map((item) => `${item.pergunta}: ${item.resposta}`).join('\n');
-        resolve(faqs);
-      }
-    });
-  });
-};
+const getFAQ = async () => {
+  let conn;
+  try {
+    conn = await createConnection();
+    const [rows] = await conn.execute('SELECT * FROM faq');
 
+    const faqs = rows
+      .map((item, index) => `${index + 1}. ${item.pergunta}: ${item.resposta}`)
+      .join('\n\n');
+    
+    return `Perguntas Frequentes:\n\n${faqs}`;
+
+  } catch (error) {
+    console.error('Erro ao buscar FAQs:', error);
+    return 'Desculpe, ocorreu um erro ao buscar as perguntas frequentes.';
+  } finally {
+    if (conn) {
+      await conn.release();
+    }
+  }
+};
 //////////////////////////////////////////////////////////////////////////
 
 const agendarConsulta = async (from, message) => {
@@ -210,10 +218,18 @@ const cancelarConsulta = async (from, message) => {
 //////////////////////////////////////////////////////////////////////////
 
 const reagendarConsulta = async (from, oldMessage, newMessage) => {
-  await cancelarConsulta(from, oldMessage);
-  return await agendarConsulta(from, newMessage);
-};
+  const cancelResult = await cancelarConsulta(from, oldMessage);
+  if (cancelResult !== 'Consulta cancelada com sucesso!') {
+    return 'Não foi possível cancelar a consulta antiga. Por favor, verifique os dados e tente novamente.';
+  }
 
+  const scheduleResult = await agendarConsulta(from, newMessage);
+  if (scheduleResult !== 'Consulta agendada com sucesso!') {
+    return 'Não foi possível agendar a nova consulta. Por favor, tente novamente.';
+  }
+
+  return 'Consulta reagendada com sucesso!';
+};
 //////////////////////////////////////////////////////////////////////////
 
 const feedbackAtendimento = async (from, message) => {
